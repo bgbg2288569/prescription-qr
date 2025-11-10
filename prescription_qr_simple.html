@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>健保處方箋 OCR 轉 QR Code</title>
+    <title>健保處方箋轉 QR Code（簡化版）</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     
     <style>
         * {
@@ -47,7 +46,7 @@
             font-size: 13px;
         }
         
-        .camera-section {
+        .photo-section {
             margin-bottom: 20px;
             padding: 16px;
             background: #f8f9fa;
@@ -60,9 +59,6 @@
             color: #667eea;
             margin-bottom: 12px;
             font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
         
         video, #captured-image {
@@ -70,12 +66,7 @@
             border-radius: 8px;
             margin: 12px 0;
             background: #000;
-        }
-        
-        video { display: none; }
-        #captured-image { 
             display: none;
-            border: 2px solid #667eea;
         }
         
         .button-group {
@@ -106,11 +97,6 @@
             background: #5568d3;
         }
         
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
         .btn-secondary {
             background: #6c757d;
             color: white;
@@ -124,47 +110,6 @@
         .btn-warning {
             background: #ffc107;
             color: #333;
-        }
-        
-        .progress-section {
-            display: none;
-            margin: 16px 0;
-            padding: 16px;
-            background: #e3f2fd;
-            border-radius: 8px;
-        }
-        
-        .progress-bar-container {
-            width: 100%;
-            height: 22px;
-            background: #fff;
-            border-radius: 11px;
-            overflow: hidden;
-            margin: 8px 0;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        
-        .progress-status {
-            color: #666;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-        
-        .form-section {
-            display: none;
-            margin-top: 20px;
         }
         
         .form-row {
@@ -195,7 +140,7 @@
             margin-left: 2px;
         }
         
-        input, textarea, select {
+        input, select {
             width: 100%;
             padding: 9px 11px;
             border: 2px solid #e0e0e0;
@@ -205,7 +150,7 @@
             transition: border-color 0.3s;
         }
         
-        input:focus, textarea:focus, select:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -242,14 +187,6 @@
             font-size: 12px;
         }
         
-        .med-row {
-            background: white;
-        }
-        
-        .med-row:hover {
-            background: #f8f9fa;
-        }
-        
         .btn-remove {
             background: #dc3545;
             color: white;
@@ -258,7 +195,6 @@
             border-radius: 4px;
             font-size: 11px;
             cursor: pointer;
-            white-space: nowrap;
         }
         
         .btn-add {
@@ -290,20 +226,6 @@
             font-size: 12px;
             color: #856404;
             border-left: 3px solid #ffc107;
-        }
-        
-        .ocr-preview {
-            display: none;
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 6px;
-            margin: 12px 0;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: "Courier New", monospace;
-            font-size: 11px;
-            white-space: pre-wrap;
-            border: 1px solid #dee2e6;
         }
         
         #qrcode-container {
@@ -352,27 +274,20 @@
             h1 {
                 font-size: 20px;
             }
-            
-            .button-group button {
-                min-width: 100px;
-                font-size: 13px;
-                padding: 10px 12px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏥 健保處方箋 OCR 轉 QR Code</h1>
-        <p class="subtitle">凌曜藥局 - 符合健保局 QR Code 規範</p>
+        <h1>🏥 健保處方箋轉 QR Code</h1>
+        <p class="subtitle">凌曜藥局 - 簡化版（純手動輸入）</p>
 
-        <!-- 拍照區 -->
-        <div class="camera-section">
-            <div class="section-title">📸 拍攝處方箋</div>
-            
-            <div class="tip-box">
-                💡 <strong>拍攝提示：</strong>光線充足、處方箋平整、字跡清晰、避免反光
-            </div>
+        <!-- 拍照參考區（可選） -->
+        <div class="photo-section">
+            <div class="section-title">📸 拍攝處方箋（參考用）</div>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                拍照後可對照紙本處方輸入資料
+            </p>
 
             <video id="video" autoplay playsinline></video>
             <canvas id="canvas" style="display:none;"></canvas>
@@ -391,43 +306,28 @@
                 <button class="btn-secondary" onclick="uploadPhoto()">
                     📁 選擇照片
                 </button>
-                <button class="btn-secondary" onclick="manualInput()" style="background: #17a2b8;">
-                    ✍️ 手動輸入
-                </button>
             </div>
             <input type="file" id="file-input" accept="image/*" style="display:none;">
         </div>
 
-        <!-- 進度條 -->
-        <div class="progress-section" id="progress-section">
-            <div class="section-title">🔍 辨識處方箋中...</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progress-bar">0%</div>
-            </div>
-            <div class="progress-status" id="progress-status">初始化...</div>
-        </div>
-
-        <!-- OCR 預覽 -->
-        <div class="ocr-preview" id="ocr-preview"></div>
-
-        <!-- 編輯表單 -->
-        <div class="form-section" id="edit-form">
-            <h3 style="margin-bottom: 16px; color: #333; font-size: 18px;">✏️ 確認處方資料</h3>
+        <!-- 輸入表單 -->
+        <div>
+            <h3 style="margin-bottom: 16px; color: #333; font-size: 18px;">✏️ 輸入處方資料</h3>
             
-            <div class="warning-box">
-                ⚠️ 請仔細核對 OCR 辨識結果，特別是藥品代號和劑量
+            <div class="tip-box">
+                💡 請對照紙本處方箋仔細輸入所有欄位
             </div>
 
             <!-- 基本資料 -->
             <div class="form-row">
                 <div class="form-group">
                     <label>醫事機構代號 <span class="required">*</span></label>
-                    <input type="text" id="hospitalCode" placeholder="10碼數字" maxlength="10">
+                    <input type="text" id="hospitalCode" placeholder="10碼數字" maxlength="10" value="3531066728">
                 </div>
                 <div class="form-group">
                     <label>處方類型 <span class="required">*</span></label>
                     <select id="prescType">
-                        <option value="1">一般處方箋</option>
+                        <option value="1" selected>一般處方箋</option>
                         <option value="2">連續處方箋</option>
                     </select>
                 </div>
@@ -440,7 +340,7 @@
                 </div>
                 <div class="form-group">
                     <label>就醫科別 <span class="required">*</span></label>
-                    <input type="text" id="deptCode" placeholder="2碼英數字" maxlength="2">
+                    <input type="text" id="deptCode" placeholder="如:09" maxlength="2">
                 </div>
             </div>
 
@@ -458,11 +358,11 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>出生日期 <span class="required">*</span></label>
-                    <input type="text" id="birthday" placeholder="YYYMMDD (民國年)" maxlength="7">
+                    <input type="text" id="birthday" placeholder="YYYMMDD (如:0590218)" maxlength="7">
                 </div>
                 <div class="form-group">
                     <label>就醫日期 <span class="required">*</span></label>
-                    <input type="text" id="visitDate" placeholder="YYYMMDD (民國年)" maxlength="7">
+                    <input type="text" id="visitDate" placeholder="YYYMMDD (如:1141108)" maxlength="7">
                 </div>
             </div>
 
@@ -487,13 +387,16 @@
             <div class="form-row full">
                 <div class="form-group">
                     <label>診治醫師代號 <span class="required">*</span></label>
-                    <input type="text" id="doctorCode" placeholder="10碼 (可用醫事機構代號)">
+                    <input type="text" id="doctorCode" placeholder="10碼" value="3531066728">
                 </div>
             </div>
 
             <!-- 藥品清單 -->
             <div class="form-group" style="margin-top: 20px;">
                 <label>💊 藥品清單 <span class="required">*</span></label>
+                <div class="warning-box">
+                    ⚠️ 請仔細核對藥品代號（10碼）和劑量
+                </div>
                 <div class="med-table">
                     <table>
                         <thead>
@@ -507,7 +410,7 @@
                             </tr>
                         </thead>
                         <tbody id="med-tbody">
-                            <!-- 藥品列表動態生成 -->
+                            <!-- 藥品列表 -->
                         </tbody>
                     </table>
                 </div>
@@ -520,7 +423,7 @@
                     📱 生成健保 QR Code
                 </button>
                 <button class="btn-secondary" onclick="resetAll()">
-                    🔄 全部重來
+                    🔄 清空重填
                 </button>
             </div>
         </div>
@@ -542,38 +445,12 @@
 
     <script>
         let stream = null;
-        let ocrWorker = null;
         let medCount = 0;
 
-        // 初始化 OCR
-        async function initOCR() {
-            if (!ocrWorker) {
-                try {
-                    ocrWorker = await Tesseract.createWorker('chi_tra+eng', 1, {
-                        logger: m => {
-                            console.log(m);
-                            if (m.status === 'recognizing text') {
-                                updateProgress(Math.round(m.progress * 100), '辨識中...');
-                            } else if (m.status) {
-                                updateProgress(10, m.status);
-                            }
-                        }
-                    });
-                    console.log('OCR Worker 建立成功');
-                } catch (error) {
-                    console.error('OCR 初始化失敗:', error);
-                    throw new Error('OCR 引擎初始化失敗，請重新整理頁面再試');
-                }
-            }
-            return ocrWorker;
-        }
-
-        // 更新進度
-        function updateProgress(percent, status) {
-            document.getElementById('progress-bar').style.width = percent + '%';
-            document.getElementById('progress-bar').textContent = percent + '%';
-            document.getElementById('progress-status').textContent = status;
-        }
+        // 頁面載入時加入一行空白藥品
+        window.addEventListener('load', () => {
+            addMedRow();
+        });
 
         // 啟動相機
         async function startCamera() {
@@ -607,28 +484,22 @@
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             
-            canvas.toBlob(blob => {
-                capturedImage.src = URL.createObjectURL(blob);
-                capturedImage.style.display = 'block';
-                
-                video.style.display = 'none';
-                document.getElementById('capture-btn').style.display = 'none';
-                document.getElementById('retake-btn').style.display = 'inline-block';
-                
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                
-                performOCR(blob);
-            }, 'image/jpeg', 0.95);
+            capturedImage.src = canvas.toDataURL('image/jpeg');
+            capturedImage.style.display = 'block';
+            
+            video.style.display = 'none';
+            document.getElementById('capture-btn').style.display = 'none';
+            document.getElementById('retake-btn').style.display = 'inline-block';
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
         }
 
         // 重拍
         function retakePhoto() {
             document.getElementById('captured-image').style.display = 'none';
             document.getElementById('retake-btn').style.display = 'none';
-            document.getElementById('ocr-preview').style.display = 'none';
-            document.getElementById('edit-form').style.display = 'none';
             startCamera();
         }
 
@@ -650,268 +521,23 @@
                     document.getElementById('video').style.display = 'none';
                     document.getElementById('start-camera-btn').style.display = 'none';
                     document.getElementById('retake-btn').style.display = 'inline-block';
-                    
-                    performOCR(file);
                 };
                 
                 reader.readAsDataURL(file);
             }
         });
 
-        // 執行 OCR
-        async function performOCR(imageBlob) {
-            const progressSection = document.getElementById('progress-section');
-            const ocrPreview = document.getElementById('ocr-preview');
-            const editForm = document.getElementById('edit-form');
-            
-            try {
-                progressSection.style.display = 'block';
-                ocrPreview.style.display = 'none';
-                editForm.style.display = 'none';
-                
-                updateProgress(0, '正在初始化 OCR 引擎...');
-                
-                let worker;
-                try {
-                    worker = await initOCR();
-                } catch (initError) {
-                    throw new Error('OCR 引擎載入失敗，請確認網路連線並重新整理頁面');
-                }
-                
-                updateProgress(20, '準備辨識圖片...');
-                
-                let result;
-                try {
-                    result = await worker.recognize(imageBlob);
-                } catch (recognizeError) {
-                    console.error('辨識錯誤:', recognizeError);
-                    throw new Error('圖片辨識失敗，請確保照片清晰並重試');
-                }
-                
-                const text = result.data.text;
-                
-                if (!text || text.trim().length === 0) {
-                    throw new Error('未辨識到任何文字，請重新拍照或手動輸入');
-                }
-                
-                updateProgress(100, '辨識完成！');
-                
-                setTimeout(() => {
-                    progressSection.style.display = 'none';
-                    ocrPreview.textContent = text;
-                    ocrPreview.style.display = 'block';
-                    displayOCRResult(text);
-                }, 500);
-                
-            } catch (error) {
-                console.error('OCR 錯誤:', error);
-                progressSection.style.display = 'none';
-                
-                // 顯示更友善的錯誤訊息
-                const errorMsg = error.message || 'OCR 辨識發生未知錯誤';
-                alert('❌ ' + errorMsg + '\n\n💡 建議：\n1. 檢查網路連線\n2. 重新整理頁面\n3. 或直接手動輸入資料');
-                
-                // 即使 OCR 失敗，仍然顯示表單讓使用者手動輸入
-                document.getElementById('edit-form').style.display = 'block';
-                addMedRow(); // 加入一行空白藥品
-            }
-        }
-
-        // 解析處方箋
-        function parsePrescriptionText(text) {
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-            const data = {
-                hospitalCode: '',
-                prescType: '1',
-                caseType: '09',
-                patientName: '',
-                patientId: '',
-                birthday: '',
-                deptCode: '',
-                visitDate: '',
-                cardSeq: '',
-                drugDays: '3',
-                icd: '',
-                doctorCode: '',
-                medications: []
-            };
-
-            // 醫事機構代號
-            for (let line of lines) {
-                const match = line.match(/\b(\d{10})\b/);
-                if (match && !data.hospitalCode) {
-                    data.hospitalCode = match[1];
-                    break;
-                }
-            }
-
-            // 姓名
-            for (let line of lines) {
-                if (line.includes('姓名') || line.includes('代碼或名稱')) {
-                    const match = line.match(/[:：]\s*([^\s]+)/);
-                    if (match) {
-                        data.patientName = match[1].replace(/[0-9]/g, '').trim();
-                        break;
-                    }
-                }
-            }
-
-            // 身分證字號
-            for (let line of lines) {
-                const match = line.match(/([A-Z]\d{9})/);
-                if (match) {
-                    data.patientId = match[1];
-                    break;
-                }
-            }
-
-            // 出生日期
-            for (let line of lines) {
-                if (line.includes('出生日期')) {
-                    const match = line.match(/(\d{3})\D?(\d{2})\D?(\d{2})/);
-                    if (match) {
-                        data.birthday = match[1] + match[2] + match[3];
-                        break;
-                    }
-                }
-            }
-
-            // 就醫科別和案類
-            for (let line of lines) {
-                if (line.includes('就醫科別') || line.includes('案類')) {
-                    const match = line.match(/[:：]\s*(\d{2})/);
-                    if (match) {
-                        if (line.includes('案類')) {
-                            data.caseType = match[1];
-                        } else {
-                            data.deptCode = match[1];
-                        }
-                    }
-                }
-            }
-
-            // 就醫日期
-            for (let line of lines) {
-                if (line.includes('就醫日期')) {
-                    const match = line.match(/(\d{3})\D?(\d{2})\D?(\d{2})/);
-                    if (match) {
-                        data.visitDate = match[1] + match[2] + match[3];
-                        break;
-                    }
-                }
-            }
-
-            // 健保卡序號
-            for (let line of lines) {
-                if (line.includes('健保卡')) {
-                    const match = line.match(/(\d{4})/);
-                    if (match) {
-                        data.cardSeq = match[1];
-                        break;
-                    }
-                }
-            }
-
-            // 給藥日份
-            for (let line of lines) {
-                if (line.includes('給藥') || line.includes('藥類')) {
-                    const match = line.match(/(\d+)/);
-                    if (match) {
-                        data.drugDays = match[1];
-                        break;
-                    }
-                }
-            }
-
-            // ICD 碼
-            for (let line of lines) {
-                const match = line.match(/([A-Z]\d{2,4})/);
-                if (match && !data.icd) {
-                    data.icd = match[1];
-                }
-            }
-
-            // 解析藥品
-            const medications = [];
-            let inMedSection = false;
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                if (line.includes('藥品名稱') || line.includes('藥品名稱品碼項')) {
-                    inMedSection = true;
-                    continue;
-                }
-                
-                const medMatch = line.match(/^([A-Z]{2}\d{8})/);
-                if (medMatch || (inMedSection && /^[A-Z0-9]{10}/.test(line))) {
-                    const medCode = medMatch ? medMatch[1] : line.substring(0, 10);
-                    
-                    const dosageMatch = line.match(/([\d.]+)\s*[\/]?\s*(錠|粒|包|顆|#|tab|cap)/i);
-                    const freqMatch = line.match(/(TID|BID|QID|QD|HS|PRN)/i);
-                    const routeMatch = line.match(/(PO|IV|IM|SC|SL)/i);
-                    const qtyMatch = line.match(/(\d+[\.]?\d*)\s*$/);
-                    
-                    medications.push({
-                        code: medCode,
-                        dosage: dosageMatch ? dosageMatch[1] : '1',
-                        frequency: freqMatch ? freqMatch[1] : 'TID',
-                        route: routeMatch ? routeMatch[1] : 'PO',
-                        quantity: qtyMatch ? qtyMatch[1] : '0'
-                    });
-                }
-            }
-
-            data.medications = medications;
-            data.doctorCode = data.hospitalCode;
-            
-            return data;
-        }
-
-        // 顯示 OCR 結果
-        function displayOCRResult(text) {
-            const data = parsePrescriptionText(text);
-            
-            document.getElementById('hospitalCode').value = data.hospitalCode;
-            document.getElementById('prescType').value = data.prescType;
-            document.getElementById('caseType').value = data.caseType;
-            document.getElementById('patientName').value = data.patientName;
-            document.getElementById('patientId').value = data.patientId;
-            document.getElementById('birthday').value = data.birthday;
-            document.getElementById('deptCode').value = data.deptCode;
-            document.getElementById('visitDate').value = data.visitDate;
-            document.getElementById('cardSeq').value = data.cardSeq;
-            document.getElementById('drugDays').value = data.drugDays;
-            document.getElementById('icd').value = data.icd;
-            document.getElementById('doctorCode').value = data.doctorCode;
-            
-            document.getElementById('med-tbody').innerHTML = '';
-            medCount = 0;
-            
-            if (data.medications.length > 0) {
-                data.medications.forEach(med => {
-                    addMedRow(med);
-                });
-            } else {
-                addMedRow();
-            }
-            
-            document.getElementById('edit-form').style.display = 'block';
-            document.getElementById('edit-form').scrollIntoView({ behavior: 'smooth' });
-        }
-
         // 新增藥品列
-        function addMedRow(medData = null) {
+        function addMedRow() {
             medCount++;
             const tbody = document.getElementById('med-tbody');
             const row = tbody.insertRow();
-            row.className = 'med-row';
             row.innerHTML = `
-                <td><input type="text" id="medCode${medCount}" value="${medData?.code || ''}" placeholder="10碼"></td>
-                <td><input type="text" id="medDosage${medCount}" value="${medData?.dosage || ''}" placeholder="1"></td>
-                <td><input type="text" id="medFreq${medCount}" value="${medData?.frequency || ''}" placeholder="TID"></td>
-                <td><input type="text" id="medRoute${medCount}" value="${medData?.route || ''}" placeholder="PO"></td>
-                <td><input type="text" id="medQty${medCount}" value="${medData?.quantity || ''}" placeholder="數量"></td>
+                <td><input type="text" id="medCode${medCount}" placeholder="AC12345678"></td>
+                <td><input type="text" id="medDosage${medCount}" placeholder="1"></td>
+                <td><input type="text" id="medFreq${medCount}" placeholder="TID"></td>
+                <td><input type="text" id="medRoute${medCount}" placeholder="PO"></td>
+                <td><input type="text" id="medQty${medCount}" placeholder="9"></td>
                 <td><button class="btn-remove" onclick="removeMedRow(this)">刪除</button></td>
             `;
         }
@@ -937,7 +563,7 @@
             const doctorCode = document.getElementById('doctorCode').value.trim();
 
             if (!hospitalCode || !patientName || !patientId || !visitDate) {
-                alert('請填寫所有必填欄位');
+                alert('請填寫所有必填欄位（*號標示）');
                 return;
             }
 
@@ -1016,33 +642,12 @@
             });
         }
 
-        // 手動輸入（跳過 OCR）
-        function manualInput() {
-            document.getElementById('edit-form').style.display = 'block';
-            if (medCount === 0) {
-                addMedRow(); // 加入一行空白
-            }
-            document.getElementById('edit-form').scrollIntoView({ behavior: 'smooth' });
-        }
-
         // 重置
         function resetAll() {
-            location.reload();
+            if (confirm('確定要清空所有資料嗎？')) {
+                location.reload();
+            }
         }
-
-        // 頁面載入時預載 OCR（可選）
-        window.addEventListener('load', () => {
-            console.log('頁面已載入');
-            // 延遲初始化 OCR，避免阻塞頁面
-            setTimeout(() => {
-                initOCR().then(() => {
-                    console.log('OCR 引擎已就緒');
-                }).catch(err => {
-                    console.warn('OCR 預載入失敗（不影響使用）:', err);
-                    // 失敗不顯示錯誤，等使用者實際使用時再處理
-                });
-            }, 2000); // 2 秒後才開始載入
-        });
     </script>
 </body>
 </html>
