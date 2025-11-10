@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>健保處方箋 OCR 轉 QR Code</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 16px;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        
+        .camera-section {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #667eea;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        video, #captured-image {
+            width: 100%;
+            border-radius: 8px;
+            margin: 12px 0;
+            background: #000;
+        }
+        
+        video { display: none; }
+        #captured-image { 
+            display: none;
+            border: 2px solid #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 110px;
+            padding: 11px 14px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .progress-section {
+            display: none;
+            margin: 16px 0;
+            padding: 16px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 22px;
+            background: #fff;
+            border-radius: 11px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .progress-status {
+            color: #666;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        
+        .form-section {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        label .required {
+            color: #dc3545;
+            margin-left: 2px;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 9px 11px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .med-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+            overflow-x: auto;
+            display: block;
+        }
+        
+        .med-table table {
+            width: 100%;
+        }
+        
+        .med-table th {
+            background: #f8f9fa;
+            padding: 8px 4px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #dee2e6;
+            font-size: 12px;
+        }
+        
+        .med-table td {
+            padding: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .med-table input {
+            padding: 6px 4px;
+            font-size: 12px;
+        }
+        
+        .med-row {
+            background: white;
+        }
+        
+        .med-row:hover {
+            background: #f8f9fa;
+        }
+        
+        .btn-remove {
+            background: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .btn-add {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .tip-box {
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #2e7d32;
+            border-left: 3px solid #4caf50;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #856404;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .ocr-preview {
+            display: none;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            border: 1px solid #dee2e6;
+        }
+        
+        #qrcode-container {
+            display: none;
+            text-align: center;
+            margin-top: 24px;
+            padding: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        #qrcode {
+            display: inline-block;
+            padding: 16px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 16px 0;
+        }
+        
+        .qr-info {
+            color: #666;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        .qr-data-preview {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            text-align: left;
+            font-size: 11px;
+            font-family: "Courier New", monospace;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .button-group button {
+                min-width: 100px;
+                font-size: 13px;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 健保處方箋 OCR 轉 QR Code</h1>
+        <p class="subtitle">凌曜藥局 - 符合健保局 QR Code 規範</p>
+
+        <!-- 拍照區 -->
+        <div class="camera-section">
+            <div class="section-title">📸 拍攝處方箋</div>
+            
+            <div class="tip-box">
+                💡 <strong>拍攝提示：</strong>光線充足、處方箋平整、字跡清晰、避免反光
+            </div>
+
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <img id="captured-image" alt="處方箋">
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="startCamera()" id="start-camera-btn">
+                    📷 啟動相機
+                </button>
+                <button class="btn-success" onclick="capturePhoto()" id="capture-btn" style="display:none;">
+                    ✓ 拍照
+                </button>
+                <button class="btn-warning" onclick="retakePhoto()" id="retake-btn" style="display:none;">
+                    ↻ 重拍
+                </button>
+                <button class="btn-secondary" onclick="uploadPhoto()">
+                    📁 選擇照片
+                </button>
+            </div>
+            <input type="file" id="file-input" accept="image/*" style="display:none;">
+        </div>
+
+        <!-- 進度條 -->
+        <div class="progress-section" id="progress-section">
+            <div class="section-title">🔍 辨識處方箋中...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar">0%</div>
+            </div>
+            <div class="progress-status" id="progress-status">初始化...</div>
+        </div>
+
+        <!-- OCR 預覽 -->
+        <div class="ocr-preview" id="ocr-preview"></div>
+
+        <!-- 編輯表單 -->
+        <div class="form-section" id="edit-form">
+            <h3 style="margin-bottom: 16px; color: #333; font-size: 18px;">✏️ 確認處方資料</h3>
+            
+            <div class="warning-box">
+                ⚠️ 請仔細核對 OCR 辨識結果，特別是藥品代號和劑量
+            </div>
+
+            <!-- 基本資料 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>醫事機構代號 <span class="required">*</span></label>
+                    <input type="text" id="hospitalCode" placeholder="10碼數字" maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label>處方類型 <span class="required">*</span></label>
+                    <select id="prescType">
+                        <option value="1">一般處方箋</option>
+                        <option value="2">連續處方箋</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>案件分類 <span class="required">*</span></label>
+                    <input type="text" id="caseType" placeholder="2碼數字" maxlength="2" value="09">
+                </div>
+                <div class="form-group">
+                    <label>就醫科別 <span class="required">*</span></label>
+                    <input type="text" id="deptCode" placeholder="2碼英數字" maxlength="2">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>姓名 <span class="required">*</span></label>
+                    <input type="text" id="patientName" placeholder="病患姓名">
+                </div>
+                <div class="form-group">
+                    <label>身分證字號 <span class="required">*</span></label>
+                    <input type="text" id="patientId" placeholder="10碼" maxlength="10">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>出生日期 <span class="required">*</span></label>
+                    <input type="text" id="birthday" placeholder="YYYMMDD (民國年)" maxlength="7">
+                </div>
+                <div class="form-group">
+                    <label>就醫日期 <span class="required">*</span></label>
+                    <input type="text" id="visitDate" placeholder="YYYMMDD (民國年)" maxlength="7">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>健保卡序號 <span class="required">*</span></label>
+                    <input type="text" id="cardSeq" placeholder="4碼數字" maxlength="4">
+                </div>
+                <div class="form-group">
+                    <label>給藥日份 <span class="required">*</span></label>
+                    <input type="number" id="drugDays" placeholder="天數" value="3">
+                </div>
+            </div>
+
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>國際疾病分類碼 <span class="required">*</span></label>
+                    <input type="text" id="icd" placeholder="如：J209 (多個用,分隔)">
+                </div>
+            </div>
+
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>診治醫師代號 <span class="required">*</span></label>
+                    <input type="text" id="doctorCode" placeholder="10碼 (可用醫事機構代號)">
+                </div>
+            </div>
+
+            <!-- 藥品清單 -->
+            <div class="form-group" style="margin-top: 20px;">
+                <label>💊 藥品清單 <span class="required">*</span></label>
+                <div class="med-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 28%;">藥品代號</th>
+                                <th style="width: 13%;">用量</th>
+                                <th style="width: 13%;">頻率</th>
+                                <th style="width: 13%;">途徑</th>
+                                <th style="width: 13%;">總量</th>
+                                <th style="width: 20%;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="med-tbody">
+                            <!-- 藥品列表動態生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn-add" onclick="addMedRow()">➕ 新增藥品</button>
+            </div>
+
+            <!-- 生成按鈕 -->
+            <div class="button-group" style="margin-top: 20px;">
+                <button class="btn-primary" onclick="generateQRCode()">
+                    📱 生成健保 QR Code
+                </button>
+                <button class="btn-secondary" onclick="resetAll()">
+                    🔄 全部重來
+                </button>
+            </div>
+        </div>
+
+        <!-- QR Code 顯示 -->
+        <div id="qrcode-container">
+            <h2 style="color: #333; margin-bottom: 16px; font-size: 20px;">✅ 健保 QR Code 已生成</h2>
+            
+            <div class="qr-data-preview" id="qr-data-preview"></div>
+            
+            <div id="qrcode"></div>
+            <p class="qr-info">請用電腦 WebCam 掃描此 QR Code</p>
+            
+            <button class="btn-success" onclick="resetAll()" style="margin-top: 16px;">
+                ➕ 處理下一張處方
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let stream = null;
+        let ocrWorker = null;
+        let medCount = 0;
+
+        // 初始化 OCR
+        async function initOCR() {
+            if (!ocrWorker) {
+                ocrWorker = await Tesseract.createWorker('chi_tra+eng', 1, {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            updateProgress(Math.round(m.progress * 100), '辨識中...');
+                        }
+                    }
+                });
+            }
+            return ocrWorker;
+        }
+
+        // 更新進度
+        function updateProgress(percent, status) {
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('progress-bar').textContent = percent + '%';
+            document.getElementById('progress-status').textContent = status;
+        }
+
+        // 啟動相機
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                document.getElementById('start-camera-btn').style.display = 'none';
+                document.getElementById('capture-btn').style.display = 'inline-block';
+            } catch (err) {
+                alert('無法啟動相機，請使用「選擇照片」功能');
+            }
+        }
+
+        // 拍照
+        function capturePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const capturedImage = document.getElementById('captured-image');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                capturedImage.src = URL.createObjectURL(blob);
+                capturedImage.style.display = 'block';
+                
+                video.style.display = 'none';
+                document.getElementById('capture-btn').style.display = 'none';
+                document.getElementById('retake-btn').style.display = 'inline-block';
+                
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                performOCR(blob);
+            }, 'image/jpeg', 0.95);
+        }
+
+        // 重拍
+        function retakePhoto() {
+            document.getElementById('captured-image').style.display = 'none';
+            document.getElementById('retake-btn').style.display = 'none';
+            document.getElementById('ocr-preview').style.display = 'none';
+            document.getElementById('edit-form').style.display = 'none';
+            startCamera();
+        }
+
+        // 上傳照片
+        function uploadPhoto() {
+            document.getElementById('file-input').click();
+        }
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    const capturedImage = document.getElementById('captured-image');
+                    capturedImage.src = event.target.result;
+                    capturedImage.style.display = 'block';
+                    
+                    document.getElementById('video').style.display = 'none';
+                    document.getElementById('start-camera-btn').style.display = 'none';
+                    document.getElementById('retake-btn').style.display = 'inline-block';
+                    
+                    performOCR(file);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 執行 OCR
+        async function performOCR(imageBlob) {
+            const progressSection = document.getElementById('progress-section');
+            const ocrPreview = document.getElementById('ocr-preview');
+            const editForm = document.getElementById('edit-form');
+            
+            try {
+                progressSection.style.display = 'block';
+                ocrPreview.style.display = 'none';
+                editForm.style.display = 'none';
+                
+                updateProgress(0, '初始化 OCR...');
+                
+                const worker = await initOCR();
+                updateProgress(20, '開始辨識...');
+                
+                const { data: { text } } = await worker.recognize(imageBlob);
+                
+                updateProgress(100, '辨識完成！');
+                
+                setTimeout(() => {
+                    progressSection.style.display = 'none';
+                    ocrPreview.textContent = text;
+                    ocrPreview.style.display = 'block';
+                    displayOCRResult(text);
+                }, 500);
+                
+            } catch (error) {
+                alert('OCR 失敗：' + error.message);
+                progressSection.style.display = 'none';
+            }
+        }
+
+        // 解析處方箋
+        function parsePrescriptionText(text) {
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            const data = {
+                hospitalCode: '',
+                prescType: '1',
+                caseType: '09',
+                patientName: '',
+                patientId: '',
+                birthday: '',
+                deptCode: '',
+                visitDate: '',
+                cardSeq: '',
+                drugDays: '3',
+                icd: '',
+                doctorCode: '',
+                medications: []
+            };
+
+            // 醫事機構代號
+            for (let line of lines) {
+                const match = line.match(/\b(\d{10})\b/);
+                if (match && !data.hospitalCode) {
+                    data.hospitalCode = match[1];
+                    break;
+                }
+            }
+
+            // 姓名
+            for (let line of lines) {
+                if (line.includes('姓名') || line.includes('代碼或名稱')) {
+                    const match = line.match(/[:：]\s*([^\s]+)/);
+                    if (match) {
+                        data.patientName = match[1].replace(/[0-9]/g, '').trim();
+                        break;
+                    }
+                }
+            }
+
+            // 身分證字號
+            for (let line of lines) {
+                const match = line.match(/([A-Z]\d{9})/);
+                if (match) {
+                    data.patientId = match[1];
+                    break;
+                }
+            }
+
+            // 出生日期
+            for (let line of lines) {
+                if (line.includes('出生日期')) {
+                    const match = line.match(/(\d{3})\D?(\d{2})\D?(\d{2})/);
+                    if (match) {
+                        data.birthday = match[1] + match[2] + match[3];
+                        break;
+                    }
+                }
+            }
+
+            // 就醫科別和案類
+            for (let line of lines) {
+                if (line.includes('就醫科別') || line.includes('案類')) {
+                    const match = line.match(/[:：]\s*(\d{2})/);
+                    if (match) {
+                        if (line.includes('案類')) {
+                            data.caseType = match[1];
+                        } else {
+                            data.deptCode = match[1];
+                        }
+                    }
+                }
+            }
+
+            // 就醫日期
+            for (let line of lines) {
+                if (line.includes('就醫日期')) {
+                    const match = line.match(/(\d{3})\D?(\d{2})\D?(\d{2})/);
+                    if (match) {
+                        data.visitDate = match[1] + match[2] + match[3];
+                        break;
+                    }
+                }
+            }
+
+            // 健保卡序號
+            for (let line of lines) {
+                if (line.includes('健保卡')) {
+                    const match = line.match(/(\d{4})/);
+                    if (match) {
+                        data.cardSeq = match[1];
+                        break;
+                    }
+                }
+            }
+
+            // 給藥日份
+            for (let line of lines) {
+                if (line.includes('給藥') || line.includes('藥類')) {
+                    const match = line.match(/(\d+)/);
+                    if (match) {
+                        data.drugDays = match[1];
+                        break;
+                    }
+                }
+            }
+
+            // ICD 碼
+            for (let line of lines) {
+                const match = line.match(/([A-Z]\d{2,4})/);
+                if (match && !data.icd) {
+                    data.icd = match[1];
+                }
+            }
+
+            // 解析藥品
+            const medications = [];
+            let inMedSection = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.includes('藥品名稱') || line.includes('藥品名稱品碼項')) {
+                    inMedSection = true;
+                    continue;
+                }
+                
+                const medMatch = line.match(/^([A-Z]{2}\d{8})/);
+                if (medMatch || (inMedSection && /^[A-Z0-9]{10}/.test(line))) {
+                    const medCode = medMatch ? medMatch[1] : line.substring(0, 10);
+                    
+                    const dosageMatch = line.match(/([\d.]+)\s*[\/]?\s*(錠|粒|包|顆|#|tab|cap)/i);
+                    const freqMatch = line.match(/(TID|BID|QID|QD|HS|PRN)/i);
+                    const routeMatch = line.match(/(PO|IV|IM|SC|SL)/i);
+                    const qtyMatch = line.match(/(\d+[\.]?\d*)\s*$/);
+                    
+                    medications.push({
+                        code: medCode,
+                        dosage: dosageMatch ? dosageMatch[1] : '1',
+                        frequency: freqMatch ? freqMatch[1] : 'TID',
+                        route: routeMatch ? routeMatch[1] : 'PO',
+                        quantity: qtyMatch ? qtyMatch[1] : '0'
+                    });
+                }
+            }
+
+            data.medications = medications;
+            data.doctorCode = data.hospitalCode;
+            
+            return data;
+        }
+
+        // 顯示 OCR 結果
+        function displayOCRResult(text) {
+            const data = parsePrescriptionText(text);
+            
+            document.getElementById('hospitalCode').value = data.hospitalCode;
+            document.getElementById('prescType').value = data.prescType;
+            document.getElementById('caseType').value = data.caseType;
+            document.getElementById('patientName').value = data.patientName;
+            document.getElementById('patientId').value = data.patientId;
+            document.getElementById('birthday').value = data.birthday;
+            document.getElementById('deptCode').value = data.deptCode;
+            document.getElementById('visitDate').value = data.visitDate;
+            document.getElementById('cardSeq').value = data.cardSeq;
+            document.getElementById('drugDays').value = data.drugDays;
+            document.getElementById('icd').value = data.icd;
+            document.getElementById('doctorCode').value = data.doctorCode;
+            
+            document.getElementById('med-tbody').innerHTML = '';
+            medCount = 0;
+            
+            if (data.medications.length > 0) {
+                data.medications.forEach(med => {
+                    addMedRow(med);
+                });
+            } else {
+                addMedRow();
+            }
+            
+            document.getElementById('edit-form').style.display = 'block';
+            document.getElementById('edit-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 新增藥品列
+        function addMedRow(medData = null) {
+            medCount++;
+            const tbody = document.getElementById('med-tbody');
+            const row = tbody.insertRow();
+            row.className = 'med-row';
+            row.innerHTML = `
+                <td><input type="text" id="medCode${medCount}" value="${medData?.code || ''}" placeholder="10碼"></td>
+                <td><input type="text" id="medDosage${medCount}" value="${medData?.dosage || ''}" placeholder="1"></td>
+                <td><input type="text" id="medFreq${medCount}" value="${medData?.frequency || ''}" placeholder="TID"></td>
+                <td><input type="text" id="medRoute${medCount}" value="${medData?.route || ''}" placeholder="PO"></td>
+                <td><input type="text" id="medQty${medCount}" value="${medData?.quantity || ''}" placeholder="數量"></td>
+                <td><button class="btn-remove" onclick="removeMedRow(this)">刪除</button></td>
+            `;
+        }
+
+        // 刪除藥品列
+        function removeMedRow(btn) {
+            btn.closest('tr').remove();
+        }
+
+        // 生成健保 QR Code
+        function generateQRCode() {
+            const hospitalCode = document.getElementById('hospitalCode').value.trim();
+            const prescType = document.getElementById('prescType').value;
+            const caseType = document.getElementById('caseType').value.trim();
+            const patientName = document.getElementById('patientName').value.trim();
+            const patientId = document.getElementById('patientId').value.trim();
+            const birthday = document.getElementById('birthday').value.trim();
+            const deptCode = document.getElementById('deptCode').value.trim();
+            const visitDate = document.getElementById('visitDate').value.trim();
+            const cardSeq = document.getElementById('cardSeq').value.trim();
+            const drugDays = document.getElementById('drugDays').value.trim();
+            const icd = document.getElementById('icd').value.trim();
+            const doctorCode = document.getElementById('doctorCode').value.trim();
+
+            if (!hospitalCode || !patientName || !patientId || !visitDate) {
+                alert('請填寫所有必填欄位');
+                return;
+            }
+
+            const medications = [];
+            const tbody = document.getElementById('med-tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            rows.forEach((row, index) => {
+                const num = index + 1;
+                const code = document.getElementById('medCode' + num)?.value.trim();
+                const dosage = document.getElementById('medDosage' + num)?.value.trim();
+                const freq = document.getElementById('medFreq' + num)?.value.trim();
+                const route = document.getElementById('medRoute' + num)?.value.trim();
+                const qty = document.getElementById('medQty' + num)?.value.trim();
+                
+                if (code) {
+                    medications.push({ code, dosage, freq, route, qty });
+                }
+            });
+
+            if (medications.length === 0) {
+                alert('請至少輸入一項藥品');
+                return;
+            }
+
+            // 組合健保 QR Code 格式
+            let qrString = [
+                hospitalCode,
+                prescType,
+                caseType,
+                patientName,
+                patientId,
+                birthday,
+                deptCode,
+                visitDate,
+                cardSeq,
+                drugDays,
+                '',
+                icd.split(',').map(i => i.trim() + '#').join(''),
+                doctorCode,
+                ''
+            ].join(';');
+
+            medications.forEach(med => {
+                qrString += ';' + [
+                    med.code,
+                    med.dosage,
+                    med.freq,
+                    med.route,
+                    med.qty
+                ].join(';');
+            });
+
+            document.getElementById('qr-data-preview').textContent = qrString;
+
+            if (qrString.length > 2900) {
+                alert('資料過長，可能無法掃描！建議簡化或分批處理');
+            }
+
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = '';
+
+            new QRCode(qrcodeDiv, {
+                text: qrString,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('qrcode-container').style.display = 'block';
+            document.getElementById('qrcode-container').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+
+        // 重置
+        function resetAll() {
+            location.reload();
+        }
+
+        // 頁面載入時初始化
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                initOCR().then(() => console.log('OCR 就緒'));
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
